@@ -1,26 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:step_progress_indicator/step_progress_indicator.dart';
 import 'dart:math';
 
 void main() {
   runApp(MaterialApp(
     home: Scaffold(
       appBar: AppBar(
-        title: Text('Monthly Grass with Pie Chart'),
+        title: Text('Monthly Grass with Horizontal Wheel'),
       ),
-      body: GrassGridWithPieChart(),
+      body: GrassGridWithHorizontalWheel(),
     ),
   ));
 }
 
-class GrassGridWithPieChart extends StatefulWidget {
-  const GrassGridWithPieChart({super.key});
+class GrassGridWithHorizontalWheel extends StatefulWidget {
+  const GrassGridWithHorizontalWheel({super.key});
 
   @override
-  _GrassGridWithPieChartState createState() => _GrassGridWithPieChartState();
+  _GrassGridWithHorizontalWheelState createState() =>
+      _GrassGridWithHorizontalWheelState();
 }
 
-class _GrassGridWithPieChartState extends State<GrassGridWithPieChart> {
+class _GrassGridWithHorizontalWheelState
+    extends State<GrassGridWithHorizontalWheel> {
   int? selectedIndex;
 
   // 더미 데이터 (한 달 기준, 30일)
@@ -38,6 +41,12 @@ class _GrassGridWithPieChartState extends State<GrassGridWithPieChart> {
   int get maxExerciseValue =>
       dummyData.map((data) => data['운동']!).reduce((a, b) => a > b ? a : b);
 
+  // 평균 데이터 계산
+  double calculateAverage(String key) {
+    final total = dummyData.map((data) => data[key]!).reduce((a, b) => a + b);
+    return total / dummyData.length;
+  }
+
   // 색상 결정 함수 (운동 기준 비율로 설정)
   Color getColor(int exerciseValue) {
     final ratio = exerciseValue / maxExerciseValue;
@@ -49,11 +58,32 @@ class _GrassGridWithPieChartState extends State<GrassGridWithPieChart> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      child: selectedIndex == null
-          ? _buildGrassGrid() // 잔디 그래프 화면
-          : _buildPieChart(), // 원형 차트 화면
+    return Column(
+      children: [
+        // 잔디 그래프 또는 원형 차트 화면
+        Expanded(
+          flex: 3,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: selectedIndex == null
+                ? _buildGrassGrid() // 잔디 그래프 화면
+                : _buildPieChart(), // 원형 차트 화면
+          ),
+        ),
+        // 좌우 휠 방식의 진행도 섹션
+        SizedBox(
+          height: 200,
+          child: PageView(
+            controller: PageController(viewportFraction: 0.7), // 중앙 강조 효과
+            children: [
+              _buildProgressIndicator('운동', calculateAverage('운동')),
+              _buildProgressIndicator('식단', calculateAverage('식단')),
+              _buildProgressIndicator('건강기능식품', calculateAverage('건강기능식품')),
+              _buildProgressIndicator('대체식단', calculateAverage('대체식단')),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -109,13 +139,11 @@ class _GrassGridWithPieChartState extends State<GrassGridWithPieChart> {
             child: PieChart(
               PieChartData(
                 sections: _buildPieChartSections(data),
-                centerSpaceRadius: 60,
-                sectionsSpace: 4,
+                centerSpaceRadius: 50,
+                sectionsSpace: 2,
                 borderData: FlBorderData(show: false),
-                startDegreeOffset: -90, // 차트 시작 위치 조정
+                startDegreeOffset: -90,
               ),
-              swapAnimationDuration: Duration(milliseconds: 800), // 애니메이션 속도
-              swapAnimationCurve: Curves.easeInOut, // 애니메이션 커브
             ),
           ),
         ),
@@ -134,6 +162,57 @@ class _GrassGridWithPieChartState extends State<GrassGridWithPieChart> {
     );
   }
 
+  // Progress Indicator 생성
+  Widget _buildProgressIndicator(String title, double average) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(2, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularStepProgressIndicator(
+            totalSteps: 100,
+            currentStep: (average / maxExerciseValue * 100).toInt(),
+            stepSize: 10,
+            selectedColor: Colors.green,
+            unselectedColor: Colors.grey[300]!,
+            padding: 0,
+            width: 120,
+            height: 120,
+            selectedStepSize: 15,
+            unselectedStepSize: 10,
+            roundedCap: (_, __) => true,
+            child: Center(
+              child: Text(
+                '${(average / maxExerciseValue * 100).toStringAsFixed(1)}%',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+
   // PieChart 섹션 빌드
   List<PieChartSectionData> _buildPieChartSections(Map<String, int> data) {
     final total = data.values.reduce((a, b) => a + b);
@@ -148,23 +227,18 @@ class _GrassGridWithPieChartState extends State<GrassGridWithPieChart> {
     return data.entries.map((entry) {
       final percentage = (entry.value / total) * 100;
       final color = colors[i % colors.length];
-      final isSelected = selectedIndex != null && selectedIndex == i;
       i++;
 
       return PieChartSectionData(
         value: entry.value.toDouble(),
         color: color,
-        radius: isSelected ? 100 : 80, // 선택된 섹션 강조
+        radius: 80,
         title: '${entry.key}\n${percentage.toStringAsFixed(1)}%',
         titleStyle: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.bold,
           color: Colors.white,
         ),
-        badgeWidget: isSelected
-            ? Icon(Icons.star, color: Colors.yellow, size: 24)
-            : null, // 선택된 섹션 배지 추가
-        badgePositionPercentageOffset: 1.2,
       );
     }).toList();
   }
