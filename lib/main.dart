@@ -7,7 +7,7 @@ void main() {
   runApp(MaterialApp(
     home: Scaffold(
       appBar: AppBar(
-        title: Text('Monthly Grass with Pie Chart & Progress'),
+        title: Text('한달 영양 지표 확인 차트'),
       ),
       body: GrassWithPieChartAndProgress(),
     ),
