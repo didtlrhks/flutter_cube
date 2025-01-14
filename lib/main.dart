@@ -7,24 +7,26 @@ void main() {
   runApp(MaterialApp(
     home: Scaffold(
       appBar: AppBar(
-        title: Text('Monthly Grass with Horizontal Wheel'),
+        title: Text('Monthly Grass with Pie Chart & Progress'),
       ),
-      body: GrassGridWithHorizontalWheel(),
+      body: GrassWithPieChartAndProgress(),
     ),
   ));
 }
 
-class GrassGridWithHorizontalWheel extends StatefulWidget {
-  const GrassGridWithHorizontalWheel({super.key});
+class GrassWithPieChartAndProgress extends StatefulWidget {
+  const GrassWithPieChartAndProgress({super.key});
 
   @override
-  _GrassGridWithHorizontalWheelState createState() =>
-      _GrassGridWithHorizontalWheelState();
+  _GrassWithPieChartAndProgressState createState() =>
+      _GrassWithPieChartAndProgressState();
 }
 
-class _GrassGridWithHorizontalWheelState
-    extends State<GrassGridWithHorizontalWheel> {
+class _GrassWithPieChartAndProgressState
+    extends State<GrassWithPieChartAndProgress> {
   int? selectedIndex;
+
+  final PageController _pageController = PageController();
 
   // 더미 데이터 (한 달 기준, 30일)
   final List<Map<String, int>> dummyData = List.generate(30, (index) {
@@ -58,23 +60,64 @@ class _GrassGridWithHorizontalWheelState
 
   @override
   Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: selectedIndex == null
+          ? _buildMainScreen() // 메인 화면 (잔디 + 진행도)
+          : _buildPieChart(), // PieChart 화면
+    );
+  }
+
+  // 메인 화면 (잔디 + 진행도)
+  Widget _buildMainScreen() {
     return Column(
       children: [
-        // 잔디 그래프 또는 원형 차트 화면
+        // 잔디 부분
         Expanded(
           flex: 3,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: selectedIndex == null
-                ? _buildGrassGrid() // 잔디 그래프 화면
-                : _buildPieChart(), // 원형 차트 화면
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: GridView.builder(
+              physics: const NeverScrollableScrollPhysics(), // 스크롤 비활성화
+              itemCount: dummyData.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7, // 한 줄에 7칸 (한 주)
+                crossAxisSpacing: 6.0,
+                mainAxisSpacing: 6.0,
+              ),
+              itemBuilder: (context, index) {
+                final data = dummyData[index];
+                final exerciseValue = data['운동']!;
+
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedIndex = index;
+                    });
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: getColor(exerciseValue),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: const Offset(2, 2),
+                        ),
+                      ],
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ),
-        // 좌우 휠 방식의 진행도 섹션
-        SizedBox(
-          height: 200,
+        // 진행도 섹션 (PageView)
+        Expanded(
+          flex: 2,
           child: PageView(
-            controller: PageController(viewportFraction: 0.7), // 중앙 강조 효과
+            controller: _pageController,
             children: [
               _buildProgressIndicator('운동', calculateAverage('운동')),
               _buildProgressIndicator('식단', calculateAverage('식단')),
@@ -87,47 +130,7 @@ class _GrassGridWithHorizontalWheelState
     );
   }
 
-  // 잔디 그래프 화면
-  Widget _buildGrassGrid() {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: GridView.builder(
-        itemCount: dummyData.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 7, // 한 줄에 7칸 (한 주)
-          crossAxisSpacing: 6.0,
-          mainAxisSpacing: 6.0,
-        ),
-        itemBuilder: (context, index) {
-          final data = dummyData[index];
-          final exerciseValue = data['운동']!;
-
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                selectedIndex = index;
-              });
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                color: getColor(exerciseValue),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 4,
-                    offset: const Offset(2, 2),
-                  ),
-                ],
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // 원형 차트 화면
+  // PieChart 화면
   Widget _buildPieChart() {
     final data = dummyData[selectedIndex!];
 
@@ -150,7 +153,7 @@ class _GrassGridWithHorizontalWheelState
         TextButton(
           onPressed: () {
             setState(() {
-              selectedIndex = null; // 잔디로 돌아가기
+              selectedIndex = null; // 메인 화면으로 돌아가기
             });
           },
           child: const Text(
@@ -164,52 +167,38 @@ class _GrassGridWithHorizontalWheelState
 
   // Progress Indicator 생성
   Widget _buildProgressIndicator(String title, double average) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(2, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularStepProgressIndicator(
-            totalSteps: 100,
-            currentStep: (average / maxExerciseValue * 100).toInt(),
-            stepSize: 10,
-            selectedColor: Colors.green,
-            unselectedColor: Colors.grey[300]!,
-            padding: 0,
-            width: 120,
-            height: 120,
-            selectedStepSize: 15,
-            unselectedStepSize: 10,
-            roundedCap: (_, __) => true,
-            child: Center(
-              child: Text(
-                '${(average / maxExerciseValue * 100).toStringAsFixed(1)}%',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        CircularStepProgressIndicator(
+          totalSteps: 100,
+          currentStep: (average / maxExerciseValue * 100).toInt(),
+          stepSize: 10,
+          selectedColor: Colors.green,
+          unselectedColor: Colors.grey[300]!,
+          padding: 0,
+          width: 120,
+          height: 120,
+          selectedStepSize: 15,
+          unselectedStepSize: 10,
+          roundedCap: (_, __) => true,
+          child: Center(
+            child: Text(
+              '${(average / maxExerciseValue * 100).toStringAsFixed(1)}%',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
               ),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ],
     );
   }
 
