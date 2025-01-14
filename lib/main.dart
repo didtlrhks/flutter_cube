@@ -109,10 +109,13 @@ class _GrassGridWithPieChartState extends State<GrassGridWithPieChart> {
             child: PieChart(
               PieChartData(
                 sections: _buildPieChartSections(data),
-                centerSpaceRadius: 50,
-                sectionsSpace: 2,
+                centerSpaceRadius: 60,
+                sectionsSpace: 4,
                 borderData: FlBorderData(show: false),
+                startDegreeOffset: -90, // 차트 시작 위치 조정
               ),
+              swapAnimationDuration: Duration(milliseconds: 800), // 애니메이션 속도
+              swapAnimationCurve: Curves.easeInOut, // 애니메이션 커브
             ),
           ),
         ),
@@ -145,18 +148,23 @@ class _GrassGridWithPieChartState extends State<GrassGridWithPieChart> {
     return data.entries.map((entry) {
       final percentage = (entry.value / total) * 100;
       final color = colors[i % colors.length];
+      final isSelected = selectedIndex != null && selectedIndex == i;
       i++;
 
       return PieChartSectionData(
         value: entry.value.toDouble(),
         color: color,
-        radius: 80,
-        title: '${percentage.toStringAsFixed(1)}%',
+        radius: isSelected ? 100 : 80, // 선택된 섹션 강조
+        title: '${entry.key}\n${percentage.toStringAsFixed(1)}%',
         titleStyle: const TextStyle(
-          fontSize: 14,
+          fontSize: 12,
           fontWeight: FontWeight.bold,
           color: Colors.white,
         ),
+        badgeWidget: isSelected
+            ? Icon(Icons.star, color: Colors.yellow, size: 24)
+            : null, // 선택된 섹션 배지 추가
+        badgePositionPercentageOffset: 1.2,
       );
     }).toList();
   }
